@@ -7,19 +7,14 @@ on:
 jobs:
   deploy_source:
     name: build and deploy lambda
-    strategy:
-      matrix:
-        go-version: [1.x]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - name: Use GO ${{ matrix.go-version }}
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: '^1.13.1'
       - name: go build
-        run: |
-          GOOS=linux GOARCH=amd64 go build -o main main.go  
+        run: GOOS=linux GOARCH=amd64 go build -o main main.go  
         env:
           CI: true
       - name: zip
