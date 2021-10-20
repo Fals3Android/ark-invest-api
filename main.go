@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"context"
+	"fmt"
+
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
@@ -20,10 +21,18 @@ type Event struct {
 	Name string `json:"name"`
 }
 
-func Handler(ctx context.Context, name Event) (Response, error) {
+func Handler(ctx context.Context, event Event) (Response, error) {
+	message := "Failed"
+	if event.Name == "getCSV" {
+		message = getCSVData()
+	}
 	return Response{
 		Health:  "UP",
-		Message: fmt.Sprintf("Event Triggered %s", name),
+		Message: fmt.Sprintf("Event Triggered %s", message),
 		Ok:      true,
 	}, nil
+}
+
+func getCSVData() string {
+	return "Success"
 }
