@@ -23,7 +23,7 @@ type Event struct {
 func Handler(ctx context.Context, name Event) (Response, error) {
 	return Response{
 		Health:  "UP",
-		Message: fmt.Sprintf("Event Triggered %s", name.Name),
+		Message: fmt.Sprintf("Event Triggered %s", name),
 		Ok:      true,
 	}, nil
 }
