@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-
+	"encoding/json"
+	"log"
+	"os"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
@@ -22,6 +24,8 @@ type Event struct {
 }
 
 func Handler(ctx context.Context, event Event) (Response, error) {
+	logEventData(event)
+
 	message := "Failed"
 	if event.Name == "getCSV" {
 		message = getCSVData()
@@ -35,4 +39,14 @@ func Handler(ctx context.Context, event Event) (Response, error) {
 
 func getCSVData() string {
 	return "Success"
+}
+
+func logEventData(event Event) {
+	eventJson, _ := json.MarshalIndent(event, "", "  ")
+	log.Printf("EVENT: %s", eventJson)
+	log.Printf("REGION: %s", os.Getenv("AWS_REGION"))
+	log.Println("ALL ENV VARS:")
+	for _, element := range os.Environ() {
+		log.Println(element)
+	}
 }
