@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
@@ -14,13 +16,19 @@ type Request struct {
 }
 
 type Response struct {
+	Health  string `json:"Health"`
 	Message string `json:"Message"`
 	Ok      bool   `json:"Ok"`
 }
 
-func Handler(request Request) (Response, error) {
+type Event struct {
+	Name string `json:"name"`
+}
+
+func Handler(request Request, name Event) (Response, error) {
 	return Response{
-		Message: "UP",
+		Health:  "UP",
+		Message: fmt.Sprintf("Event Triggered %s", name.Name),
 		Ok:      true,
 	}, nil
 }
