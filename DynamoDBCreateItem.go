@@ -13,15 +13,15 @@ import (
 )
 
 type Entry struct {
-	id          string
-	date        string
-	shares      int
-	cusip       string
-	market_value float64
-	ticker      string
-	fund        string
-	weight      float64
-	company     string
+	Id          string  `json:"id"`
+	Date        string  `json:"date"`
+	Shares      int     `json:"shares"`
+	Cusip       string  `json:"cusip"`
+	MarketValue float64 `json:"market_value"`
+	Ticker      string  `json:"ticker"`
+	Fund        string  `json:"fund"`
+	Weight      float64 `json:"weight"`
+	Company     string  `json:"company"`
 }
 
 func createDBItem(list [][]string) {
@@ -35,20 +35,20 @@ func createDBItem(list [][]string) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	
+
 	svc := dynamodb.New(sess)
 	id := uuid.New()
-	
+	fmt.Println(id.String())
 	entry := Entry{
-		id:          id.String(),
-		date:        "10/23/21",
-		shares:      999,
-		cusip:       "HI9409I8",
-		market_value: 12351234.12,
-		ticker:      "DWAC",
-		fund:        "test",
-		weight:      12.43,
-		company:     "TEST",
+		Id:          id.String(),
+		Date:        "10/23/21",
+		Shares:      999,
+		Cusip:       "HI9409I8",
+		MarketValue: 12351234.12,
+		Ticker:      "DWAC",
+		Fund:        "test",
+		Weight:      12.43,
+		Company:     "TEST",
 	}
 
 	av, err := dynamodbattribute.MarshalMap(entry)
@@ -68,5 +68,5 @@ func createDBItem(list [][]string) {
 		log.Fatalf("Got error calling PutItem: %s", err)
 	}
 
-	fmt.Println("Successfully added '" + entry.ticker + " 'to table': " + tableName)
+	fmt.Println("Successfully added '" + entry.Ticker + " 'to table': " + tableName)
 }
