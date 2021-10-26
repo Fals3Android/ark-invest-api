@@ -13,15 +13,15 @@ import (
 )
 
 type Entry struct {
-	Id          string
-	Date        string
-	Shares      int
-	Cusip       string
-	MarketValue float64
-	Ticker      string
-	Fund        string
-	Weight      float64
-	Company     string
+	id          string
+	date        string
+	shares      int
+	cusip       string
+	market_value float64
+	ticker      string
+	fund        string
+	weight      float64
+	company     string
 }
 
 func createDBItem(list [][]string) {
@@ -38,17 +38,17 @@ func createDBItem(list [][]string) {
 	
 	svc := dynamodb.New(sess)
 	id := uuid.New()
-	fmt.Println(id.String())
+	
 	entry := Entry{
-		Id:          id.String(),
-		Date:        "10/23/21",
-		Shares:      999,
-		Cusip:       "HI9409I8",
-		MarketValue: 12351234.12,
-		Ticker:      "DWAC",
-		Fund:        "test",
-		Weight:      12.43,
-		Company:     "TEST",
+		id:          id.String(),
+		date:        "10/23/21",
+		shares:      999,
+		cusip:       "HI9409I8",
+		market_value: 12351234.12,
+		ticker:      "DWAC",
+		fund:        "test",
+		weight:      12.43,
+		company:     "TEST",
 	}
 
 	av, err := dynamodbattribute.MarshalMap(entry)
@@ -68,5 +68,5 @@ func createDBItem(list [][]string) {
 		log.Fatalf("Got error calling PutItem: %s", err)
 	}
 
-	fmt.Println("Successfully added '" + entry.Ticker + " 'to table': " + tableName)
+	fmt.Println("Successfully added '" + entry.ticker + " 'to table': " + tableName)
 }
