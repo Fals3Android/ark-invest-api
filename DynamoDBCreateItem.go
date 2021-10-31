@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -15,16 +17,98 @@ import (
 type Entry struct {
 	Id          string  `json:"id"`
 	Date        string  `json:"date"`
-	Shares      int     `json:"shares"`
-	Cusip       string  `json:"cusip"`
-	MarketValue float64 `json:"market_value"`
-	Ticker      string  `json:"ticker"`
 	Fund        string  `json:"fund"`
-	Weight      float64 `json:"weight"`
 	Company     string  `json:"company"`
+	Ticker      string  `json:"ticker"`
+	Cusip       string  `json:"cusip"`
+	Shares      int     `json:"shares"`
+	MarketValue float64 `json:"market_value"`
+	Weight      float64 `json:"weight"`
 }
 
-func createDBItem(list [][]string) {
+func putBatchRequest(list [][]string) {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
+	svc := dynamodb.New(sess)
+	entries := convertRowsToEntries(list)
+	input := &dynamodb.BatchWriteItemInput{
+		RequestItems: getBatchRequestItems(entries, tableName),
+	}
+	result, err := svc.BatchWriteItem(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+			case dynamodb.ErrCodeResourceNotFoundException:
+				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+			case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
+				fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+			case dynamodb.ErrCodeInternalServerError:
+				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return
+	}
+
+	fmt.Println(result)
+}
+
+func getBatchRequestItems(list []Entry, tableName string) map[string][]*dynamodb.WriteRequest {
+	request := make(map[string][]*dynamodb.WriteRequest)
+	writeRequests := []*dynamodb.WriteRequest{}
+
+	for _, item := range list {
+		row, err := dynamodbattribute.MarshalMap(item)
+		if err != nil {
+			log.Fatalf("Got error calling PutItem: %s", err)
+		}
+
+		writeRequests = append(writeRequests, &dynamodb.WriteRequest{PutRequest: &dynamodb.PutRequest{
+			Item: row,
+		}})
+	}
+
+	request[tableName] = writeRequests
+
+	return request
+}
+
+func convertRowsToEntries(list [][]string) []Entry {
+	entries := []Entry{}
+	for i := 1; i < len(list); i++ {
+		item := list[i]
+		id := uuid.New()
+		shares, _ := strconv.Atoi(item[4])
+		marketValue, _ := strconv.ParseFloat(item[6], 64)
+		weight, _ := strconv.ParseFloat(item[7], 64)
+
+		entries = append(entries, Entry{
+			Id:          id.String(),
+			Date:        item[0],
+			Fund:        item[1],
+			Company:     item[2],
+			Ticker:      item[3],
+			Shares:      shares,
+			Cusip:       item[5],
+			MarketValue: marketValue,			
+			Weight:      weight,
+		})
+	}
+	return entries
+}
+
+func createSingleDBItemExample(list [][]string) {
 	// cfg := aws.Config{
 	// 	Endpoint:   aws.String("http://localhost:8000"),
 	// 	Region:     aws.String("us-west-2"),

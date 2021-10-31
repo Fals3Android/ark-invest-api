@@ -28,11 +28,11 @@ func Handler(ctx context.Context, event Event) (Response, error) {
 	message := "No Event Passed"
 
 	if event.Name == "getCSV" {
-		// csv, status := getCSVFromUrl("https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_INNOVATION_ETF_ARKQ_HOLDINGS.csv")
-		// message = status
-		// log.Printf("DATA: %s", csv)
+		csv, status := getCSVFromUrl("https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_INNOVATION_ETF_ARKQ_HOLDINGS.csv")
+		message = status
+		log.Printf("DATA: %s", csv)
 		log.Printf("Writing To DynamoDB")
-		createDBItem([][]string{})
+		putBatchRequest(csv)
 	}
 
 	return Response{
