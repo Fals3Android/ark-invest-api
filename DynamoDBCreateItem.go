@@ -33,42 +33,52 @@ func putBatchRequest(list [][]string) {
 	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
 	svc := dynamodb.New(sess)
 	entries := convertRowsToEntries(list)
-	input := &dynamodb.BatchWriteItemInput{
-		RequestItems: getBatchRequestItems(entries, tableName),
-	}
-	result, err := svc.BatchWriteItem(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
-			case dynamodb.ErrCodeResourceNotFoundException:
-				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
-			case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
-				fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
-			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
+	batchRequestItems := getBatchRequestItems(entries, tableName)
+	for _, item := range batchRequestItems {
+		input := &dynamodb.BatchWriteItemInput{
+			RequestItems: item,
 		}
-		return
+		result, err := svc.BatchWriteItem(input)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case dynamodb.ErrCodeProvisionedThroughputExceededException:
+					fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+				case dynamodb.ErrCodeResourceNotFoundException:
+					fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+				case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
+					fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+				case dynamodb.ErrCodeRequestLimitExceeded:
+					fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+				case dynamodb.ErrCodeInternalServerError:
+					fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				default:
+					fmt.Println(aerr.Error())
+				}
+			} else {
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				fmt.Println(err.Error())
+			}
+			return
+		}
+		fmt.Println(result)
 	}
-
-	fmt.Println(result)
 }
 
-func getBatchRequestItems(list []Entry, tableName string) map[string][]*dynamodb.WriteRequest {
-	request := make(map[string][]*dynamodb.WriteRequest)
+func getBatchRequestItems(list []Entry, tableName string) []map[string][]*dynamodb.WriteRequest {
+	batchedRequests := make([]map[string][]*dynamodb.WriteRequest, 0) // you can send endless batches
+	request := make(map[string][]*dynamodb.WriteRequest)              // each request must not exceed 25 writes
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, item := range list {
+		if len(writeRequests) == 25 {
+			request[tableName] = writeRequests
+			batchedRequests = append(batchedRequests, request)
+			request = make(map[string][]*dynamodb.WriteRequest)
+			writeRequests = []*dynamodb.WriteRequest{}
+		}
+
 		row, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {
 			log.Fatalf("Got error calling PutItem: %s", err)
@@ -79,9 +89,12 @@ func getBatchRequestItems(list []Entry, tableName string) map[string][]*dynamodb
 		}})
 	}
 
-	request[tableName] = writeRequests
+	if len(writeRequests) > 0 {
+		request[tableName] = writeRequests
+		batchedRequests = append(batchedRequests, request)
+	}
 
-	return request
+	return batchedRequests
 }
 
 func convertRowsToEntries(list [][]string) []Entry {
@@ -101,7 +114,7 @@ func convertRowsToEntries(list [][]string) []Entry {
 			Ticker:      item[3],
 			Shares:      shares,
 			Cusip:       item[5],
-			MarketValue: marketValue,			
+			MarketValue: marketValue,
 			Weight:      weight,
 		})
 	}
