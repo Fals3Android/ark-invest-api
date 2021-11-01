@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -104,6 +105,8 @@ func convertRowsToAttributes(list [][]string) []map[string]*dynamodb.AttributeVa
 	for i := 1; i < len(list); i++ {
 		item := list[i]
 		id := uuid.New()
+		marketValue := strings.TrimPrefix(item[6], "$")
+		weight := strings.TrimSuffix(item[7], "%")
 		row := map[string]*dynamodb.AttributeValue{
 			"Id": {
 				S: aws.String(id.String()),
@@ -127,10 +130,10 @@ func convertRowsToAttributes(list [][]string) []map[string]*dynamodb.AttributeVa
 				S: aws.String(item[5]),
 			},
 			"MarketValue": {
-				N: aws.String(item[6]),
+				N: aws.String(marketValue),
 			},
 			"Weight": {
-				N: aws.String(item[7]),
+				N: aws.String(weight),
 			},
 		}
 		attributeList = append(attributeList, row)
