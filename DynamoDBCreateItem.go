@@ -36,9 +36,28 @@ func putBatchRequest(list [][]string) {
 	entries := convertRowsToAttributes(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)
 	fmt.Println(batchRequestItems[0])
+
 	// for _, item := range batchRequestItems {
 	input := &dynamodb.BatchWriteItemInput{
-		RequestItems:                batchRequestItems[0],
+		RequestItems: map[string][]*dynamodb.WriteRequest{
+			"ARK_INNOVATION_ETF_ARKQ_HOLDINGS": {
+				{
+					PutRequest: &dynamodb.PutRequest{
+						Item: map[string]*dynamodb.AttributeValue{
+							"id": {
+								S: aws.String("1"),
+							},
+							"ticker": {
+								S: aws.String("ALS"),
+							},
+							"cusip": {
+								S: aws.String("UIDFOU9083"),
+							},
+						},
+					},
+				},
+			},
+		},
 		ReturnConsumedCapacity:      aws.String("INDEXES"),
 		ReturnItemCollectionMetrics: aws.String("SIZE"),
 	}
