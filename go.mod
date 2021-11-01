@@ -8,6 +8,9 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
+
+require github.com/aws/smithy-go v1.8.1 // indirect
