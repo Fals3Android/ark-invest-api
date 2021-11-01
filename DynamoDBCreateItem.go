@@ -28,11 +28,12 @@ type Entry struct {
 }
 
 func putBatchRequest(list [][]string) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
+	svc := dynamodb.New(session.New())
+	// sess := session.Must(session.NewSessionWithOptions(session.Options{
+	// 	SharedConfigState: session.SharedConfigEnable,
+	// }))
 	// tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
-	svc := dynamodb.New(sess)
+	// svc := dynamodb.New(sess)
 	// entries := convertRowsToAttributes(list)
 	// batchRequestItems := getBatchRequestItems(entries, tableName)
 
