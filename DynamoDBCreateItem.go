@@ -109,31 +109,31 @@ func convertRowsToAttributes(list [][]string) []map[string]*dynamodb.AttributeVa
 		marketValue := strings.ReplaceAll(strings.TrimPrefix(item[6], "$"), ",", "")
 		weight := strings.ReplaceAll(strings.TrimSuffix(item[7], "%"), ",", "")
 		row := map[string]*dynamodb.AttributeValue{
-			"Id": {
+			"id": {
 				S: aws.String(id.String()),
 			},
-			"Date": {
+			"date": {
 				S: aws.String(item[0]),
 			},
-			"Fund": {
+			"fund": {
 				S: aws.String(item[1]),
 			},
-			"Company": {
+			"company": {
 				S: aws.String(item[2]),
 			},
-			"Ticker": {
+			"ticker": {
 				S: aws.String(item[3]),
 			},
-			"Cusip": {
+			"cusip": {
 				S: aws.String(item[4]),
 			},
-			"Shares": {
+			"shares": {
 				N: aws.String(shares),
 			},
-			"MarketValue": {
+			"market_value": {
 				N: aws.String(marketValue),
 			},
-			"Weight": {
+			"weight": {
 				N: aws.String(weight),
 			},
 		}
