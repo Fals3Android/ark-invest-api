@@ -34,6 +34,8 @@ func putBatchRequest(list [][]string) {
 	svc := dynamodb.New(sess)
 	entries := convertRowsToEntries(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)
+	fmt.Println(batchRequestItems)
+
 	for _, item := range batchRequestItems {
 		input := &dynamodb.BatchWriteItemInput{
 			RequestItems: item,
@@ -62,7 +64,7 @@ func putBatchRequest(list [][]string) {
 			}
 			return
 		}
-		fmt.Println(result)
+		fmt.Println(result, "hello")
 	}
 }
 
