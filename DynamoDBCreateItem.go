@@ -35,11 +35,12 @@ func putBatchRequest(list [][]string) {
 	svc := dynamodb.New(sess)
 	entries := convertRowsToAttributes(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)
-	fmt.Println(batchRequestItems)
 
 	for _, item := range batchRequestItems {
 		input := &dynamodb.BatchWriteItemInput{
-			RequestItems: item,
+			RequestItems:                item,
+			ReturnConsumedCapacity:      aws.String("INDEXES"),
+			ReturnItemCollectionMetrics: aws.String("SIZE"),
 		}
 		result, err := svc.BatchWriteItem(input)
 		if err != nil {
@@ -65,7 +66,7 @@ func putBatchRequest(list [][]string) {
 			}
 			return
 		}
-		fmt.Println(result, "hello")
+		fmt.Println(result)
 	}
 }
 
