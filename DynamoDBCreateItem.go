@@ -27,12 +27,14 @@ type Entry struct {
 }
 
 func putBatchRequest(list [][]string) {
-	svc := dynamodb.New(session.New())
-
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := dynamodb.New(sess)
 	out, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]*dynamodb.WriteRequest{
 			"ARK_INNOVATION_ETF_ARKQ_HOLDINGS": {
-				{
+				&dynamodb.WriteRequest{
 					PutRequest: &dynamodb.PutRequest{
 						Item: map[string]*dynamodb.AttributeValue{
 							"id": {S: aws.String("123")},
