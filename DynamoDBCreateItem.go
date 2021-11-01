@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -30,80 +31,46 @@ func putBatchRequest(list [][]string) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
+
+	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
 	svc := dynamodb.New(sess)
-	out, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
-			"ARK_INNOVATION_ETF_ARKQ_HOLDINGS": {
-				&dynamodb.WriteRequest{
-					PutRequest: &dynamodb.PutRequest{
-						Item: map[string]*dynamodb.AttributeValue{
-							"id": {S: aws.String("123")},
-						},
-					},
-				},
-			},
-		},
-	})
-	if err != nil {
-		panic(err)
+	entries := convertRowsToAttributes(list)
+	batchRequestItems := getBatchRequestItems(entries, tableName)
+
+	for _, item := range batchRequestItems {
+		input := &dynamodb.BatchWriteItemInput{
+			RequestItems:                item,
+			ReturnConsumedCapacity:      aws.String("INDEXES"),
+			ReturnItemCollectionMetrics: aws.String("SIZE"),
+		}
+
+		result, err := svc.BatchWriteItem(input)
+
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case dynamodb.ErrCodeProvisionedThroughputExceededException:
+					fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+				case dynamodb.ErrCodeResourceNotFoundException:
+					fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+				case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
+					fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+				case dynamodb.ErrCodeRequestLimitExceeded:
+					fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+				case dynamodb.ErrCodeInternalServerError:
+					fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+				default:
+					fmt.Println(aerr.Error())
+				}
+			} else {
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				fmt.Println(err.Error())
+			}
+			return
+		}
+		fmt.Println(result)
 	}
-
-	fmt.Println(out)
-	// sess := session.Must(session.NewSessionWithOptions(session.Options{
-	// 	SharedConfigState: session.SharedConfigEnable,
-	// }))
-	// tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
-	// svc := dynamodb.New(sess)
-	// entries := convertRowsToAttributes(list)
-	// batchRequestItems := getBatchRequestItems(entries, tableName)
-
-	// for _, item := range batchRequestItems {
-	// input := &dynamodb.BatchWriteItemInput{
-	// 	RequestItems: map[string][]*dynamodb.WriteRequest{
-	// 		"ARK_INNOVATION_ETF_ARKQ_HOLDINGS": {
-	// 			{
-	// 				PutRequest: &dynamodb.PutRequest{
-	// 					Item: map[string]*dynamodb.AttributeValue{
-	// 						"id": {
-	// 							S: aws.String("1"),
-	// 						},
-	// 						"ticker": {
-	// 							S: aws.String("ALS"),
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// 	ReturnConsumedCapacity:      aws.String("INDEXES"),
-	// 	ReturnItemCollectionMetrics: aws.String("SIZE"),
-	// }
-	// result, err := svc.BatchWriteItem(input)
-	// if err != nil {
-	// 	if aerr, ok := err.(awserr.Error); ok {
-	// 		switch aerr.Code() {
-	// 		case dynamodb.ErrCodeProvisionedThroughputExceededException:
-	// 			fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
-	// 		case dynamodb.ErrCodeResourceNotFoundException:
-	// 			fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
-	// 		case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
-	// 			fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
-	// 		case dynamodb.ErrCodeRequestLimitExceeded:
-	// 			fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
-	// 		case dynamodb.ErrCodeInternalServerError:
-	// 			fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
-	// 		default:
-	// 			fmt.Println(aerr.Error())
-	// 		}
-	// 	} else {
-	// 		// Print the error, cast err to awserr.Error to get the Code and
-	// 		// Message from an error.
-	// 		fmt.Println(err.Error())
-	// 	}
-	// 	return
-	// }
-	// fmt.Println(result)
-	// }
 }
 
 func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName string) []map[string][]*dynamodb.WriteRequest {
@@ -118,11 +85,6 @@ func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName 
 			request = make(map[string][]*dynamodb.WriteRequest)
 			writeRequests = []*dynamodb.WriteRequest{}
 		}
-
-		// row, err := dynamodbattribute.MarshalMap(item)
-		// if err != nil {
-		// 	log.Fatalf("Got error calling PutItem: %s", err)
-		// }
 
 		writeRequests = append(writeRequests, &dynamodb.WriteRequest{PutRequest: &dynamodb.PutRequest{
 			Item: item,

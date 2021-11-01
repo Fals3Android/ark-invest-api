@@ -32,8 +32,7 @@ func Handler(ctx context.Context, event Event) (Response, error) {
 		message = status
 		log.Printf("DATA: %s", csv)
 		log.Printf("Writing To DynamoDB")
-		// putBatchRequest(csv)
-		createSingleDBItemExample([][]string{})
+		putBatchRequest(csv)
 	}
 
 	return Response{
