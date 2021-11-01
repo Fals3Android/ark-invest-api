@@ -36,38 +36,38 @@ func putBatchRequest(list [][]string) {
 	entries := convertRowsToAttributes(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)
 
-	for _, item := range batchRequestItems {
-		input := &dynamodb.BatchWriteItemInput{
-			RequestItems:                item,
-			ReturnConsumedCapacity:      aws.String("INDEXES"),
-			ReturnItemCollectionMetrics: aws.String("SIZE"),
-		}
-		result, err := svc.BatchWriteItem(input)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case dynamodb.ErrCodeProvisionedThroughputExceededException:
-					fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
-				case dynamodb.ErrCodeResourceNotFoundException:
-					fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
-				case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
-					fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
-				case dynamodb.ErrCodeRequestLimitExceeded:
-					fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
-				case dynamodb.ErrCodeInternalServerError:
-					fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
-				default:
-					fmt.Println(aerr.Error())
-				}
-			} else {
-				// Print the error, cast err to awserr.Error to get the Code and
-				// Message from an error.
-				fmt.Println(err.Error())
-			}
-			return
-		}
-		fmt.Println(result)
+	// for _, item := range batchRequestItems {
+	input := &dynamodb.BatchWriteItemInput{
+		RequestItems:                batchRequestItems[0],
+		ReturnConsumedCapacity:      aws.String("INDEXES"),
+		ReturnItemCollectionMetrics: aws.String("SIZE"),
 	}
+	result, err := svc.BatchWriteItem(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+			case dynamodb.ErrCodeResourceNotFoundException:
+				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+			case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
+				fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+			case dynamodb.ErrCodeInternalServerError:
+				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return
+	}
+	fmt.Println(result)
+	// }
 }
 
 func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName string) []map[string][]*dynamodb.WriteRequest {
