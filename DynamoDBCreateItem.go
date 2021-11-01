@@ -31,11 +31,10 @@ func putBatchRequest(list [][]string) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
+	// tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
 	svc := dynamodb.New(sess)
-	entries := convertRowsToAttributes(list)
-	batchRequestItems := getBatchRequestItems(entries, tableName)
-	fmt.Println(batchRequestItems[0])
+	// entries := convertRowsToAttributes(list)
+	// batchRequestItems := getBatchRequestItems(entries, tableName)
 
 	// for _, item := range batchRequestItems {
 	input := &dynamodb.BatchWriteItemInput{
@@ -49,9 +48,6 @@ func putBatchRequest(list [][]string) {
 							},
 							"ticker": {
 								S: aws.String("ALS"),
-							},
-							"cusip": {
-								S: aws.String("UIDFOU9083"),
 							},
 						},
 					},
