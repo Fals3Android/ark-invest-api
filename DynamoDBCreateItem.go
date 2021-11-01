@@ -76,7 +76,8 @@ func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName 
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, item := range list {
-		if len(writeRequests) == 25 {
+		fmt.Println(len(writeRequests))
+		if len(writeRequests) == 24 {
 			request[tableName] = writeRequests
 			batchedRequests = append(batchedRequests, request)
 			request = make(map[string][]*dynamodb.WriteRequest)
