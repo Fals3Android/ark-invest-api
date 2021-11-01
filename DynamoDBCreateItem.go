@@ -32,7 +32,7 @@ func putBatchRequest(list [][]string) {
 	}))
 	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
 	svc := dynamodb.New(sess)
-	entries := convertRowsToEntries(list)
+	entries := convertRowsToAttributes(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)
 	fmt.Println(batchRequestItems)
 
@@ -68,7 +68,7 @@ func putBatchRequest(list [][]string) {
 	}
 }
 
-func getBatchRequestItems(list []Entry, tableName string) []map[string][]*dynamodb.WriteRequest {
+func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName string) []map[string][]*dynamodb.WriteRequest {
 	batchedRequests := make([]map[string][]*dynamodb.WriteRequest, 0) // you can send endless batches
 	request := make(map[string][]*dynamodb.WriteRequest)              // each request must not exceed 25 writes
 	writeRequests := []*dynamodb.WriteRequest{}
@@ -81,13 +81,13 @@ func getBatchRequestItems(list []Entry, tableName string) []map[string][]*dynamo
 			writeRequests = []*dynamodb.WriteRequest{}
 		}
 
-		row, err := dynamodbattribute.MarshalMap(item)
-		if err != nil {
-			log.Fatalf("Got error calling PutItem: %s", err)
-		}
+		// row, err := dynamodbattribute.MarshalMap(item)
+		// if err != nil {
+		// 	log.Fatalf("Got error calling PutItem: %s", err)
+		// }
 
 		writeRequests = append(writeRequests, &dynamodb.WriteRequest{PutRequest: &dynamodb.PutRequest{
-			Item: row,
+			Item: item,
 		}})
 	}
 
@@ -97,6 +97,45 @@ func getBatchRequestItems(list []Entry, tableName string) []map[string][]*dynamo
 	}
 
 	return batchedRequests
+}
+
+func convertRowsToAttributes(list [][]string) []map[string]*dynamodb.AttributeValue {
+	attributeList := make([]map[string]*dynamodb.AttributeValue, 0)
+	for i := 1; i < len(list); i++ {
+		item := list[i]
+		id := uuid.New()
+		row := map[string]*dynamodb.AttributeValue{
+			"Id": {
+				S: aws.String(id.String()),
+			},
+			"Date": {
+				S: aws.String(item[0]),
+			},
+			"Fund": {
+				S: aws.String(item[1]),
+			},
+			"Company": {
+				S: aws.String(item[2]),
+			},
+			"Ticker": {
+				S: aws.String(item[3]),
+			},
+			"Shares": {
+				N: aws.String(item[4]),
+			},
+			"Cusip": {
+				S: aws.String(item[5]),
+			},
+			"MarketValue": {
+				N: aws.String(item[6]),
+			},
+			"Weight": {
+				N: aws.String(item[7]),
+			},
+		}
+		attributeList = append(attributeList, row)
+	}
+	return attributeList
 }
 
 func convertRowsToEntries(list [][]string) []Entry {
