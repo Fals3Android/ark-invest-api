@@ -27,12 +27,11 @@ type Entry struct {
 	Weight      float64 `json:"weight"`
 }
 
-func putBatchRequest(list [][]string) {
+func putBatchRequest(list [][]string, tableName string) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	tableName := "ARK_INNOVATION_ETF_ARKQ_HOLDINGS"
 	svc := dynamodb.New(sess)
 	entries := convertRowsToAttributes(list)
 	batchRequestItems := getBatchRequestItems(entries, tableName)

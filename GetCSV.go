@@ -1,14 +1,14 @@
 package main
 
 import (
-	"net/http"
 	"encoding/csv"
 	"io"
+	"net/http"
 )
 
 func getCSVFromUrl(url string) ([][]string, string) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("User-Agent", "Chrome/56.0.2924.76")
 	response, err := client.Do(req)
 	if err != nil {
