@@ -29,10 +29,10 @@ type Entry struct {
 }
 
 func putBatchRequest(funds map[string]MetaInfo) {
-	// sess := session.Must(session.NewSessionWithOptions(session.Options{
-	// 	SharedConfigState: session.SharedConfigEnable,
-	// }))
-	sess := CreateLocalClient("mac", "8000")
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
 	batchedRequests := make([]map[string][]*dynamodb.WriteRequest, 0)
 	for _, value := range funds {
 		batchedRequests = append(batchedRequests, getBatchRequestItems(value.attributeValues, value.tableName)...)
