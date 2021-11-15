@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -27,60 +28,102 @@ type Entry struct {
 	Weight      float64 `json:"weight"`
 }
 
-func putBatchRequest(list [][]string, tableName string) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-
-	svc := dynamodb.New(sess)
-	entries := convertRowsToAttributes(list)
-	batchRequestItems := getBatchRequestItems(entries, tableName)
-
-	for _, item := range batchRequestItems {
-		input := &dynamodb.BatchWriteItemInput{
-			RequestItems:                item,
-			ReturnConsumedCapacity:      aws.String("INDEXES"),
-			ReturnItemCollectionMetrics: aws.String("SIZE"),
-		}
-
-		result, err := svc.BatchWriteItem(input)
-
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case dynamodb.ErrCodeProvisionedThroughputExceededException:
-					fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
-				case dynamodb.ErrCodeResourceNotFoundException:
-					fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
-				case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
-					fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
-				case dynamodb.ErrCodeRequestLimitExceeded:
-					fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
-				case dynamodb.ErrCodeInternalServerError:
-					fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
-				default:
-					fmt.Println(aerr.Error())
-				}
-			} else {
-				// Print the error, cast err to awserr.Error to get the Code and
-				// Message from an error.
-				fmt.Println(err.Error())
-			}
-			return
-		}
-		fmt.Println(result)
+func putBatchRequest(funds map[string]MetaInfo) {
+	// sess := session.Must(session.NewSessionWithOptions(session.Options{
+	// 	SharedConfigState: session.SharedConfigEnable,
+	// }))
+	sess := CreateLocalClient("mac", "8000")
+	batchedRequests := make([]map[string][]*dynamodb.WriteRequest, 0)
+	for _, value := range funds {
+		batchedRequests = append(batchedRequests, getBatchRequestItems(value.attributeValues, value.tableName)...)
 	}
+
+	// batchGroups := consolidateBatchGroups(batchedRequests)
+	var wg sync.WaitGroup
+
+	for _, item := range batchedRequests {
+		wg.Add(1)
+		go doBatchWrite(&wg, sess, item)
+	}
+
+	wg.Wait() //Works ! writes new values to the db but for some reason causes timeouts
+}
+
+func doBatchWrite(wg *sync.WaitGroup, sess *session.Session, item map[string][]*dynamodb.WriteRequest) {
+	defer wg.Done()
+	svc := dynamodb.New(sess)
+
+	input := &dynamodb.BatchWriteItemInput{
+		RequestItems:                item,
+		ReturnConsumedCapacity:      aws.String("INDEXES"),
+		ReturnItemCollectionMetrics: aws.String("SIZE"),
+	}
+	result, err := svc.BatchWriteItem(input)
+
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
+			case dynamodb.ErrCodeResourceNotFoundException:
+				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
+			case dynamodb.ErrCodeItemCollectionSizeLimitExceededException:
+				fmt.Println(dynamodb.ErrCodeItemCollectionSizeLimitExceededException, aerr.Error())
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
+			case dynamodb.ErrCodeInternalServerError:
+				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return
+	}
+	fmt.Println(result)
+}
+
+func consolidateBatchGroups(batchedRequests []map[string][]*dynamodb.WriteRequest) []map[string][]*dynamodb.WriteRequest {
+	groups := make([]map[string][]*dynamodb.WriteRequest, 0)
+	uniq := make(map[string][]*dynamodb.WriteRequest)
+	counter := 0
+	for len(batchedRequests) != 0 {
+		fmt.Println(batchedRequests[counter], counter, uniq, batchedRequests)
+		current := batchedRequests[counter]
+
+		for key, value := range current {
+			_, ok := uniq[key]
+			if !ok {
+				uniq[key] = value
+				batchedRequests = append(batchedRequests[:counter], batchedRequests[counter+1:]...)
+				counter = 0
+				continue
+			}
+		}
+
+		if counter >= len(batchedRequests)-1 {
+			groups = append(groups, uniq)
+			uniq = make(map[string][]*dynamodb.WriteRequest)
+			counter = 0
+		} else {
+			counter++
+		}
+	}
+	return groups
 }
 
 func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName string) []map[string][]*dynamodb.WriteRequest {
-	batchedRequests := make([]map[string][]*dynamodb.WriteRequest, 0) // you can send endless batches
-	request := make(map[string][]*dynamodb.WriteRequest)              // each request must not exceed 25 writes
+	batch := make([]map[string][]*dynamodb.WriteRequest, 0)
+	request := make(map[string][]*dynamodb.WriteRequest) // each request must not exceed 25 writes
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, item := range list {
 		if len(writeRequests) == 24 {
 			request[tableName] = writeRequests
-			batchedRequests = append(batchedRequests, request)
+			batch = append(batch, request)
 			request = make(map[string][]*dynamodb.WriteRequest)
 			writeRequests = []*dynamodb.WriteRequest{}
 		}
@@ -92,10 +135,9 @@ func getBatchRequestItems(list []map[string]*dynamodb.AttributeValue, tableName 
 
 	if len(writeRequests) > 0 {
 		request[tableName] = writeRequests
-		batchedRequests = append(batchedRequests, request)
+		batch = append(batch, request)
 	}
-
-	return batchedRequests
+	return batch
 }
 
 func convertRowsToAttributes(list [][]string) []map[string]*dynamodb.AttributeValue {

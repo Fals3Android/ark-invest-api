@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"sync"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -22,23 +22,38 @@ type Event struct {
 	Name string `json:"name"`
 }
 
+func handleDataTransaction(fund MetaInfo) [][]string {
+	csv, _ := getCSVFromUrl(fund.url)
+	return csv
+}
+
 func Handler(ctx context.Context, event Event) (Response, error) {
 	logEventData(event)
 
-	message := "No Event Passed"
-
 	if event.Name == "getCSV" {
-		csv, status := getCSVFromUrl("https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_AUTONOMOUS_TECH._&_ROBOTICS_ETF_ARKQ_HOLDINGS.csv")
-		message = status
-		log.Printf("DATA: %s", csv)
-		log.Printf("Writing To DynamoDB")
-		tableName := "ARK_AUTONOMOUS_TECH_AND_ROBOTICS_ETF_ARKQ_HOLDINGS"
-		putBatchRequest(csv, tableName)
+		var wg sync.WaitGroup
+		funds := getTablesAndUrls()
+
+		for key, value := range funds {
+			ch := make(chan [][]string)
+			wg.Add(1)
+			go func(value MetaInfo) {
+				defer wg.Done()
+				ch <- handleDataTransaction(value)
+			}(value)
+			csv := <-ch
+			value.data = csv
+			value.attributeValues = convertRowsToAttributes(csv)
+			funds[key] = value
+		}
+
+		wg.Wait()
+		putBatchRequest(funds)
 	}
 
 	return Response{
 		Health:  "UP",
-		Message: fmt.Sprintf("Event Triggered %s", message),
+		Message: fmt.Sprintf("Event Triggered %s", event.Name),
 		Ok:      true,
 	}, nil
 }
